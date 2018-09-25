@@ -6,7 +6,7 @@ import java.io.BufferedOutputStream;
 public class Client implements Runnable {
   String hostname;
   int port;
-  int milliseconds; // in milliseconds
+  long milliseconds; // in milliseconds
 
   public Client(String hostname, int port, int time) {
     this.hostname = hostname;
@@ -22,13 +22,12 @@ public class Client implements Runnable {
       long startTime = System.currentTimeMillis();
       int kilobytesSent = 0;
       while (System.currentTimeMillis() < startTime + this.milliseconds) {
-        System.out.println("Hello");
         out.write(message);
         kilobytesSent++;
       }
       socket.close();
       double mbps = ((double) kilobytesSent) / this.milliseconds;
-      System.out.println(String.format("sent=%s KB rate=%s Mbps", kilobytesSent, mbps));
+      System.out.printf("sent=%s KB rate=%3.3f Mbps\n", kilobytesSent, mbps);
     } catch(UnknownHostException u) {
         System.out.println(u);
     } catch(IOException i) {
