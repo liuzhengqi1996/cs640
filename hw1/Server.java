@@ -1,4 +1,4 @@
-public class Server implements ThingThatRuns {
+public class Server implements Runnable {
   int port;
 
   public Server(int port) {

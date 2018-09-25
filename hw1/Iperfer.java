@@ -2,7 +2,7 @@ public class Iperfer {
 
   public static void main(String[] args) {
     System.out.println(args[0]);
-    ThingThatRuns thingThatRuns;
+    Runnable runnable;
     if (args[0].equals("-c")) {
       if (args.length != 7) {
         System.out.println("Error: missing or additional arguments");
@@ -12,7 +12,7 @@ public class Iperfer {
       int port = Integer.parseInt(args[4]);
       int time = Integer.parseInt(args[6]);
       validatePort(port);
-      thingThatRuns = new Client(hostname, port, time);
+      runnable = new Client(hostname, port, time);
     } else if (args[0].equals("-s")) {
       if (args.length != 3) {
         System.out.println("Error: missing or additional arguments");
@@ -20,11 +20,11 @@ public class Iperfer {
       }
       int port = Integer.parseInt(args[2]);
       validatePort(port);
-      thingThatRuns = new Server(port);
+      runnable = new Server(port);
     } else {
       return;
     }
-    thingThatRuns.run();
+    runnable.run();
   }
 
   private static void validatePort(int port) {

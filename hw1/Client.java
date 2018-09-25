@@ -3,7 +3,7 @@ import java.net.UnknownHostException;
 import java.io.IOException;
 import java.io.BufferedOutputStream;
 
-public class Client implements ThingThatRuns {
+public class Client implements Runnable {
   String hostname;
   int port;
   int milliseconds; // in milliseconds
