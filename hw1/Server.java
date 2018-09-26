@@ -18,13 +18,18 @@ public class Server implements Runnable {
     		) {
     	long start = System.currentTimeMillis();
     	long runTime;
-    	int kbTransfered = 0;
-    	while(in.read(buffer, 0, 1000) != -1) {
-    		kbTransfered++;
+    	int bytesTransferred = 0;
+    	while(true) {
+        int charsRead = in.read(buffer, 0, 1000);
+        if (charsRead != -1) {
+          bytesTransferred += charsRead;
+        } else {
+          break;
+        }
     	}
     	runTime = System.currentTimeMillis() - start;
 
-    	System.out.printf("received=%d KB rate=%.3f Mbps\n", kbTransfered, ((double)kbTransfered)/runTime);
+    	System.out.printf("received=%d KB rate=%.3f Mbps\n", bytesTransferred/1000, ((double)bytesTransferred)/runTime/1000);
     } catch(IOException e) {
     }
   }
