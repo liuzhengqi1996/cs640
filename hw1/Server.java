@@ -19,7 +19,7 @@ public class Server implements Runnable {
     		) {
     	long start = System.currentTimeMillis();
     	long runTime;
-    	int bytesTransferred = 0;
+    	long bytesTransferred = 0;
     	while(true) {
         int bytesRead = in.read(buffer, 0, 1000);
         if (bytesRead != -1) {
