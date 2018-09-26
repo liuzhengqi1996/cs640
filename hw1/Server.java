@@ -24,8 +24,7 @@ public class Server implements Runnable {
     	}
     	runTime = System.currentTimeMillis() - start;
 
-    	System.out.printf("received=%d KB rate=%3.3f Mbps\n", kbTransfered, ((double)kbTransfered)/runTime);
-    	// System.out.printf("rate=%3.3f Mbps\n", );
+    	System.out.printf("received=%d KB rate=%.3f Mbps\n", kbTransfered, ((double)kbTransfered)/runTime);
     } catch(IOException e) {
     }
   }

@@ -25,6 +25,7 @@ public class Client implements Runnable {
         out.write(message);
         kilobytesSent++;
       }
+      out.flush();
       socket.close();
       double mbps = ((double) kilobytesSent) / this.milliseconds;
       System.out.printf("sent=%s KB rate=%3.3f Mbps\n", kilobytesSent, mbps);
