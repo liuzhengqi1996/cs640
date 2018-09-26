@@ -3,26 +3,27 @@ import java.io.*;
 
 public class Server implements Runnable {
   int port;
-  char[] buffer;
+  byte[] buffer;
 
   public Server(int port) {
     this.port = port;
-    buffer = new char[1000];
+    buffer = new byte[1000];
   }
 
   public void run() {
     try(
     	ServerSocket ss = new ServerSocket(port);
     	Socket cs = ss.accept();
-    	BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
+      DataInputStream in = new DataInputStream(cs.getInputStream());
+    	// BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
     		) {
     	long start = System.currentTimeMillis();
     	long runTime;
     	int bytesTransferred = 0;
     	while(true) {
-        int charsRead = in.read(buffer, 0, 1000);
-        if (charsRead != -1) {
-          bytesTransferred += charsRead;
+        int bytesRead = in.read(buffer, 0, 1000);
+        if (bytesRead != -1) {
+          bytesTransferred += bytesRead;
         } else {
           break;
         }
