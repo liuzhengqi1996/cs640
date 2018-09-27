@@ -1,7 +1,6 @@
 public class Iperfer {
 
   public static void main(String[] args) {
-    System.out.println(args[0]);
     Runnable runnable;
     if (args[0].equals("-c")) {
       if (args.length != 7) {
