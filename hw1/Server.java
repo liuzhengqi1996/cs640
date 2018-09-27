@@ -11,12 +11,10 @@ public class Server implements Runnable {
   }
 
   public void run() {
-    try(
+    try {
     	ServerSocket ss = new ServerSocket(port);
     	Socket cs = ss.accept();
       DataInputStream in = new DataInputStream(cs.getInputStream());
-    	// BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
-    		) {
     	long start = System.currentTimeMillis();
     	long runTime;
     	long bytesTransferred = 0;
@@ -30,8 +28,12 @@ public class Server implements Runnable {
     	}
     	runTime = System.currentTimeMillis() - start;
 
-    	System.out.printf("received=%d KB rate=%.3f Mbps\n", bytesTransferred/1000, ((double)bytesTransferred)/runTime/1000);
+      long kilobytesTransferred = bytesTransferred/1000;
+      double transferRate = bytesTransferred/(runTime*1000.0);
+
+    	System.out.printf("received=%d KB rate=%.3f Mbps\n", kilobytesTransferred, transferRate);
     } catch(IOException e) {
+      System.out.println(e);
     }
   }
 }
