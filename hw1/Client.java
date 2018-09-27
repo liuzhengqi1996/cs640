@@ -28,7 +28,7 @@ public class Client implements Runnable {
       out.flush();
       socket.close();
       double mbps = ((double) kilobytesSent) / this.milliseconds;
-      System.out.printf("sent=%s KB rate=%3.3f Mbps\n", kilobytesSent, mbps);
+      System.out.printf("sent=%s KB rate=%3.3f Mbps\n", kilobytesSent, mbps*8);
     } catch(UnknownHostException u) {
         System.out.println(u);
     } catch(IOException i) {

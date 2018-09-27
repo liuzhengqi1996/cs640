@@ -29,7 +29,7 @@ public class Server implements Runnable {
     	runTime = System.currentTimeMillis() - start;
 
       long kilobytesTransferred = bytesTransferred/1000;
-      double transferRate = bytesTransferred/(runTime*1000.0);
+      double transferRate = bytesTransferred/(runTime*1000.0)*8;
 
     	System.out.printf("received=%d KB rate=%.3f Mbps\n", kilobytesTransferred, transferRate);
     } catch(IOException e) {
