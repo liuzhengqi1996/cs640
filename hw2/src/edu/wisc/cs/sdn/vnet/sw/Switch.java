@@ -50,18 +50,21 @@ public class Switch extends Device {
 			SwitchTable.get(srcMac).reset();
 		}
 		else {
+			System.out.println("Adding to switch table");
 			SwitchTable.put(srcMac, new SwitchTableEntry(inIface));
 		}
 		
 		/*Next, Check if the destination is already in the switch table:
 		 * if it is, forward it to the correct port; if not, broadcast.*/
 		if(SwitchTable.containsKey(destMac)) {
+			System.out.println("Found the dest in the switch table");
 			sendPacket(etherPacket, SwitchTable.get(destMac).portname);
 		}
 		else {
-			interfaces.forEach((name, iface) -> {
-				sendPacket(etherPacket, iface);
-			});
+			System.out.println("Broadcasting");
+			for(String name : interfaces.keySet()) {
+				sendPacket(etherPacket, interfaces.get(name));
+			}
 		}
 	}
 	
@@ -86,12 +89,16 @@ public class Switch extends Device {
 			public void run() {
 				/*For each MAC address in the Switch Table, decrement the
 				 * timeout value and remove the entry if it has hit zero.*/
-				SwitchTable.forEach((k, v) -> {
+				List<Long> removeList = new ArrayList<Long>();
+				for(long k : SwitchTable.keySet()) {
 					SwitchTable.get(k).timeoutCounter--;
 					if(SwitchTable.get(k).timeoutCounter <= 0) {
-						SwitchTable.remove(k);
+						removeList.add(k);
 					}
-				});
+				}
+				for(long remove : removeList) {
+					SwitchTable.remove(remove);
+				}
 			}
 		}	
 	}
