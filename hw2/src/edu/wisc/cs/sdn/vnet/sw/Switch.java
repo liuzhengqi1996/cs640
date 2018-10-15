@@ -14,7 +14,7 @@ public class Switch extends Device {
 	
 	/*The Switch Table. It groups MAC address with a class that groups together
 	 * a timeout value and a port name.*/
-	Map<MACAddress, SwitchTableEntry> SwitchTable;
+	Map<Long, SwitchTableEntry> SwitchTable;
 	
 	/**
 	 * Creates a router for a specific host.
@@ -25,7 +25,7 @@ public class Switch extends Device {
 		
 		/*The LinkedHashMap must be synchronized since multiple threads may try to
 		 * act on it simultaneously.*/
-		SwitchTable = Collections.synchronizedMap(new HashMap<MACAddress
+		SwitchTable = Collections.synchronizedMap(new HashMap<Long
 												  , SwitchTableEntry>());
 		
 		new SwitchTableTimer(); //Start the switch table update thread
@@ -40,8 +40,8 @@ public class Switch extends Device {
 		System.out.println("*** -> Received packet: " +
                 etherPacket.toString().replace("\n", "\n\t"));
 		
-		MACAddress srcMac = etherPacket.getSourceMAC();
-		MACAddress destMac = etherPacket.getDestinationMAC();
+		long srcMac = etherPacket.getSourceMAC().toLong();
+		long destMac = etherPacket.getDestinationMAC().toLong();
 		
 		/*First handle the src address (i.e. check if it is already in the table.
 		 * if so, update the timeout; if not, add it.)*/
