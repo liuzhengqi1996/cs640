@@ -63,7 +63,8 @@ public class Switch extends Device {
 		else {
 			System.out.println("Broadcasting");
 			for(String name : interfaces.keySet()) {
-				sendPacket(etherPacket, interfaces.get(name));
+				if(inIface.getName() != name)
+					sendPacket(etherPacket, interfaces.get(name));
 			}
 		}
 	}
