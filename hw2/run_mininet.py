@@ -61,6 +61,7 @@ class VNetHost:
 class VNetSwitch:
     def __init__(self, name):
         self.name = name
+        self.protocols = 'OpenFlow10'
 
 class VNetRouter:
     def __init__(self, name, addrs):
@@ -71,6 +72,7 @@ class VNetRouter:
         self.subnets = []
         self.ifaces = 0
         self.switch = None
+        self.protocols = 'OpenFlow10'
         for addr in addrs:
             ip = addr.split("/")[0]
             prefix = int(addr.split("/")[1])
@@ -151,7 +153,7 @@ class VNetTopo(Topo):
                             self.graph.add_node(nameB)
                         self.graph.add_edge(nameA, nameB, 1)
                     else:
-                        sys.exit("Error in topology configuration line: %s" 
+                        sys.exit("Error in topology configuration line: %s"
                                 % line)
                 f.close()
 
@@ -229,7 +231,7 @@ class VNetTopo(Topo):
                     remotert = self.vrouters[remote.split('.')[0]]
                     remoteport = int(remote.split('.')[1])
                     info("Reach %s from %s via %s.%d and %s.%d\n" % (
-                            rt.name, router.name, localrt.name, 
+                            rt.name, router.name, localrt.name,
                             localport, remotert.name, remoteport))
                     gw = remotert.ips[remoteport-1]
                     for i in range(0, len(rt.ips)):
@@ -239,7 +241,7 @@ class VNetTopo(Topo):
                         subnet = ipStr(ipParse(ip) & ipParse(mask))
                         if (subnet in router.subnets):
                             continue
-                        f.write('%s %s %s eth%d\n' % (subnet, gw, mask, 
+                        f.write('%s %s %s eth%d\n' % (subnet, gw, mask,
                                     localport))
                         router.subnets.append(subnet)
 
@@ -247,7 +249,7 @@ class VNetTopo(Topo):
                 f.close()
         except EnvironmentError:
             sys.exit("Couldn't write IP file" % ipfile)
- 
+
 def stopallsshd():
     "Stop *all* sshd processes with a custom banner"
     info( '*** Shutting down stale sshd/Banner processes ',
@@ -255,11 +257,11 @@ def stopallsshd():
 
 def stopallhttp():
     "Stop simple Python web servers"
-    info( '*** Shutting down stale SimpleHTTPServers', 
-        quietRun( "pkill -9 -f SimpleHTTPServer" ), '\n' )    
-    info( '*** Shutting down stale webservers', 
-        quietRun( "pkill -7 -f webserver.py" ), '\n' )    
-  
+    info( '*** Shutting down stale SimpleHTTPServers',
+        quietRun( "pkill -9 -f SimpleHTTPServer" ), '\n' )
+    info( '*** Shutting down stale webservers',
+        quietRun( "pkill -7 -f webserver.py" ), '\n' )
+
 def prefixToMask(prefix):
     shift = 32 - prefix
     return ipStr((0xffffffff >> shift) << shift)
@@ -290,7 +292,7 @@ def dijkstra(graph, initial):
 
   nodes = set(graph.nodes)
 
-  while nodes: 
+  while nodes:
     min_node = None
     for node in nodes:
       if node in visited:
