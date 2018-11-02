@@ -1,7 +1,7 @@
 version: '3'
 services:
   app:
-    image: hw2.1:latest
+    image: hw3
     tty: true
     network_mode: "bridge"
     privileged: true
