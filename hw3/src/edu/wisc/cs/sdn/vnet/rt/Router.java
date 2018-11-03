@@ -6,18 +6,21 @@ import edu.wisc.cs.sdn.vnet.Iface;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.MACAddress;
+import net.floodlightcontroller.packet.Data;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
  */
 public class Router extends Device
-{	
+{
 	/** Routing table for the router */
 	private RouteTable routeTable;
-	
+
 	/** ARP cache for the router */
 	private ArpCache arpCache;
-	
+
 	/**
 	 * Creates a router for a specific host.
 	 * @param host hostname for the router
@@ -28,13 +31,13 @@ public class Router extends Device
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
 	}
-	
+
 	/**
 	 * @return routing table for the router
 	 */
 	public RouteTable getRouteTable()
 	{ return this.routeTable; }
-	
+
 	/**
 	 * Load a new routing table from a file.
 	 * @param routeTableFile the name of the file containing the routing table
@@ -47,13 +50,13 @@ public class Router extends Device
 					+ routeTableFile);
 			System.exit(1);
 		}
-		
+
 		System.out.println("Loaded static route table");
 		System.out.println("-------------------------------------------------");
 		System.out.print(this.routeTable.toString());
 		System.out.println("-------------------------------------------------");
 	}
-	
+
 	/**
 	 * Load a new ARP cache from a file.
 	 * @param arpCacheFile the name of the file containing the ARP cache
@@ -66,7 +69,7 @@ public class Router extends Device
 					+ arpCacheFile);
 			System.exit(1);
 		}
-		
+
 		System.out.println("Loaded static ARP cache");
 		System.out.println("----------------------------------");
 		System.out.print(this.arpCache.toString());
@@ -82,10 +85,10 @@ public class Router extends Device
 	{
 		System.out.println("*** -> Received packet: " +
                 etherPacket.toString().replace("\n", "\n\t"));
-		
+
 		/********************************************************************/
 		/* TODO: Handle packets                                             */
-		
+
 		switch(etherPacket.getEtherType())
 		{
 		case Ethernet.TYPE_IPv4:
@@ -93,16 +96,31 @@ public class Router extends Device
 			break;
 		// Ignore all other packet types, for now
 		}
-		
+
 		/********************************************************************/
 	}
-	
+
+	private void sendICMP(MACAddress sourceMACAddress,
+												MACAddress destinationMACAddress,
+												int sourceIP, int destIP,
+												int type, int code) {
+		Ethernet ether = new Ethernet();
+		IPv4 ip = new IPv4();
+		ICMP icmp = new ICMP();
+		Data data = new Data();
+		ether.setEtherType(Ethernet.TYPE_IPv4);
+
+		ether.setPayload(ip);
+		ip.setPayload(icmp);
+		icmp.setPayload(data);
+	}
+
 	private void handleIpPacket(Ethernet etherPacket, Iface inIface)
 	{
 		// Make sure it's an IP packet
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4)
 		{ return; }
-		
+
 		// Get IP header
 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
         System.out.println("Handle IP packet");
@@ -115,22 +133,34 @@ public class Router extends Device
         short calcCksum = ipPacket.getChecksum();
         if (origCksum != calcCksum)
         { return; }
-        
+
         // Check TTL
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
-        { return; }
-        
+        {
+					// from the interface
+					MACAddress newSourceMAC = inIface.getMacAddress();
+					int newSourceIP = inIface.getIpAddress();
+
+					RouteEntry routeEntry = this.routeTable.lookup(ipPacket.getSourceAddress());
+					ArpEntry arpEntry = this.arpCache.lookup(routeEntry.getGatewayAddress());
+					MACAddress destMAC = arpEntry.getMac();
+					int destIP = ipPacket.getSourceAddress();
+
+					this.sendICMP(newSourceMAC, destMAC, newSourceIP, destIP, 11, 0);
+					return;
+				}
+
         // Reset checksum now that TTL is decremented
         ipPacket.resetChecksum();
-        
+
         // Check if packet is destined for one of router's interfaces
         for (Iface iface : this.interfaces.values())
         {
         	if (ipPacket.getDestinationAddress() == iface.getIpAddress())
         	{ return; }
         }
-		
+
         // Do route lookup and forward
         this.forwardIpPacket(etherPacket, inIface);
 	}
@@ -141,12 +171,12 @@ public class Router extends Device
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4)
 		{ return; }
         System.out.println("Forward IP packet");
-		
+
 		// Get IP header
 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
         int dstAddr = ipPacket.getDestinationAddress();
 
-        // Find matching route table entry 
+        // Find matching route table entry
         RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
 
         // If no entry matched, do nothing
@@ -171,7 +201,7 @@ public class Router extends Device
         if (null == arpEntry)
         { return; }
         etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
-        
+
         this.sendPacket(etherPacket, outIface);
     }
 }
