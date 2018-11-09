@@ -190,7 +190,7 @@ public class Router extends Device {
 		byte[] ipArray = ipPacket.serialize();
 		ByteBuffer bb = ByteBuffer.wrap(dataArray);
 		bb.putInt(0);
-		for (int i = 0; i < dataArray.length - 3; ++i)
+		for (int i = 0; i < dataArray.length - 4; ++i)
 			bb.put(ipArray[i]);
 		Data data = new Data(dataArray);
 
