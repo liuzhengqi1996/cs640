@@ -89,7 +89,6 @@ public class Main
 			if (routeTableFile != null)
 			{ ((Router)dev).loadRouteTable(routeTableFile); }
 			else {
-				((Router)dev).loadRouterInterfaces();
 				((Router)dev).startRIP();
 			}
 

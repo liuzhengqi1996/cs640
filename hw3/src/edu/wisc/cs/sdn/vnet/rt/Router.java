@@ -8,15 +8,7 @@ import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
-import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.ICMP;
-import net.floodlightcontroller.packet.MACAddress;
-import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.Data;
-import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.packet.RIPv2;
-import net.floodlightcontroller.packet.RIPv2Entry;
+import net.floodlightcontroller.packet.*;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -24,6 +16,7 @@ import net.floodlightcontroller.packet.RIPv2Entry;
 public class Router extends Device {
 	/** Routing table for the router */
 	private RouteTable routeTable;
+	private RipTable ripTable;
 
 	/* For queueing while waiting for ARP replies */
 	private Map<Integer, Boolean> replyReceived;
@@ -33,7 +26,6 @@ public class Router extends Device {
 	private ArpCache arpCache;
 
 	public static final int MULTICAST_ADDR = 1276475249;
-	// public static final short MULTICAST_PORT = 520;
 
 	/**
 	 * Creates a router for a specific host.
@@ -74,22 +66,21 @@ public class Router extends Device {
 	public void startRIP() {
 		System.out.println("Starting RIP");
 		System.out.println("-------------------------------------------------");
+
+		this.ripTable = new RipTable(this.routeTable);
+
+		// Load Router interfaces into RIP Table
+		for (Iface iface : this.interfaces.values()) {
+			this.ripTable.insert(0, iface.getIpAddress(), 0, iface.getSubnetMask(), iface);
+		}
+
 		for (Iface iface : this.interfaces.values()) {
 			this.sendRipRequest(iface);
 		}
+
 		RIPThread ripThread = new RIPThread(this);
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(ripThread, 10, 10, TimeUnit.SECONDS);
-	}
-
-	public void loadRouterInterfaces() {
-		for (Iface iface : this.interfaces.values()) {
-			this.routeTable.insert(iface.getIpAddress(), 0, iface.getSubnetMask(), iface);
-		}
-		System.out.println("Loading router interfaces into table");
-		System.out.println("-------------------------------------------------");
-		System.out.println(this.routeTable);
-		System.out.println("-------------------------------------------------");
 	}
 
 	/**
@@ -143,18 +134,19 @@ public class Router extends Device {
 		UDP udp = this.wrapRip(req);
 		IPv4 ipv4 = this.wrapUdp(udp, outIface.getIpAddress(), MULTICAST_ADDR);
 		Ethernet ether = this.wrapIpv4(ipv4, outIface.getMacAddress(), MACAddress.valueOf("FF:FF:FF:FF:FF:FF"));
-		this.forwardIpPacket(ether, outIface);
+		this.sendPacket(ether, outIface);
 	}
 
 	private void sendUnsolicitedRipResponse(Iface outIface) {
 		System.out.println("Sending unsolicited RIP Response.");
 		RIPv2 req = new RIPv2();
 		/* TODO: figure out what to put in req */
+
 		req.setCommand(RIPv2.COMMAND_RESPONSE);
 		UDP udp = this.wrapRip(req);
 		IPv4 ipv4 = this.wrapUdp(udp, outIface.getIpAddress(), MULTICAST_ADDR);
 		Ethernet ether = this.wrapIpv4(ipv4, outIface.getMacAddress(), MACAddress.valueOf("FF:FF:FF:FF:FF:FF"));
-		this.forwardIpPacket(ether, outIface);
+		this.sendPacket(ether, outIface);
 	}
 
 	private void sendSolicitedRipResponse(Iface outIface, int destIP, MACAddress destMAC) {
@@ -165,7 +157,7 @@ public class Router extends Device {
 		UDP udp = this.wrapRip(req);
 		IPv4 ipv4 = this.wrapUdp(udp, outIface.getIpAddress(), destIP);
 		Ethernet ether = this.wrapIpv4(ipv4, outIface.getMacAddress(), destMAC);
-		this.forwardIpPacket(ether, outIface);
+		this.sendPacket(ether, outIface);
 	}
 
 	private void handleRipPacket(Ethernet etherPacket, Iface inIface) {
@@ -179,6 +171,7 @@ public class Router extends Device {
 			// inIface becomes outIface; source address and source mac become dest address and dest mac
 			this.sendSolicitedRipResponse(inIface, sourceIP, sourceMAC);
 		} else if (rip.getCommand() == RIPv2.COMMAND_RESPONSE) {
+			System.out.println("hey");
 			for (RIPv2Entry entry : rip.getEntries()) {
 				/* TODO: Deal with these entries */
 				System.out.println(entry);
@@ -277,8 +270,10 @@ public class Router extends Device {
 		/* TODO: Handle packets */
 		switch (etherPacket.getEtherType()) {
 		case Ethernet.TYPE_IPv4:
-			// if (etherPacket)
 			IPv4 ipv4Packet = (IPv4) etherPacket.getPayload();
+			// System.out.println(ipv4Packet.getProtocol());
+			// System.out.println(ipv4Packet.getDestinationAddress());
+			// System.out.println(((UDP)ipv4Packet.getPayload()).getDestinationPort());
 			if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP &&
 					ipv4Packet.getDestinationAddress() == MULTICAST_ADDR &&
 					((UDP)ipv4Packet.getPayload()).getDestinationPort() ==  UDP.RIP_PORT) {
