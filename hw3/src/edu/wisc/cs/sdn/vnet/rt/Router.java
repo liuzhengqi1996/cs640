@@ -36,8 +36,8 @@ public class Router extends Device {
 		super(host, logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
-		replyReceived = new HashMap<Integer, Boolean>();
-		queuedRequests = new HashMap<Integer, LinkedList<Request>>();
+		this.replyReceived = new HashMap<Integer, Boolean>();
+		this.queuedRequests = new HashMap<Integer, LinkedList<Request>>();
 	}
 
 	/**
@@ -45,6 +45,31 @@ public class Router extends Device {
 	 */
 	public RouteTable getRouteTable() {
 		return this.routeTable;
+	}
+
+	public Map<Integer, Boolean> getReplyReceived() {
+		return this.replyReceived;
+	}
+
+	public Map<Integer, LinkedList<Request>> getQueuedRequests() {
+		return this.queuedRequests;
+	}
+
+	/**
+	 * Load a new ARP cache from a file.
+	 *
+	 * @param arpCacheFile the name of the file containing the ARP cache
+	 */
+	public void loadArpCache(String arpCacheFile) {
+		if (!arpCache.load(arpCacheFile)) {
+			System.err.println("Error setting up ARP cache from file " + arpCacheFile);
+			System.exit(1);
+		}
+
+		System.out.println("Loaded static ARP cache");
+		System.out.println("----------------------------------");
+		System.out.print(this.arpCache.toString());
+		System.out.println("----------------------------------");
 	}
 
 	/**
@@ -71,33 +96,20 @@ public class Router extends Device {
 
 		// Load Router interfaces into RIP Table
 		for (Iface iface : this.interfaces.values()) {
-			this.ripTable.insert(0, iface.getIpAddress(), 0, iface.getSubnetMask(), iface);
+			this.ripTable.insert(iface);
 		}
 
 		for (Iface iface : this.interfaces.values()) {
 			this.sendRipRequest(iface);
 		}
 
-		RIPThread ripThread = new RIPThread(this);
-		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(ripThread, 10, 10, TimeUnit.SECONDS);
-	}
+		UnsolicitedRipResponse unsolicitedRipResponse = new UnsolicitedRipResponse(this);
+		ScheduledExecutorService unsolicitedRipResponseExecutor = Executors.newScheduledThreadPool(1);
+		unsolicitedRipResponseExecutor.scheduleAtFixedRate(unsolicitedRipResponse, 10, 10, TimeUnit.SECONDS);
 
-	/**
-	 * Load a new ARP cache from a file.
-	 *
-	 * @param arpCacheFile the name of the file containing the ARP cache
-	 */
-	public void loadArpCache(String arpCacheFile) {
-		if (!arpCache.load(arpCacheFile)) {
-			System.err.println("Error setting up ARP cache from file " + arpCacheFile);
-			System.exit(1);
-		}
-
-		System.out.println("Loaded static ARP cache");
-		System.out.println("----------------------------------");
-		System.out.print(this.arpCache.toString());
-		System.out.println("----------------------------------");
+		RipReaper ripReaper = new RipReaper(this.ripTable);
+		ScheduledExecutorService ripReaperExecutor = Executors.newScheduledThreadPool(1);
+		ripReaperExecutor.scheduleAtFixedRate(ripReaper, 5, 10, TimeUnit.SECONDS);
 	}
 
 	private UDP wrapRip(RIPv2 rip) {
@@ -140,8 +152,7 @@ public class Router extends Device {
 	private void sendUnsolicitedRipResponse(Iface outIface) {
 		System.out.println("Sending unsolicited RIP Response.");
 		RIPv2 req = new RIPv2();
-		/* TODO: figure out what to put in req */
-
+		req.setEntries(this.ripTable.entriesList(outIface));
 		req.setCommand(RIPv2.COMMAND_RESPONSE);
 		UDP udp = this.wrapRip(req);
 		IPv4 ipv4 = this.wrapUdp(udp, outIface.getIpAddress(), MULTICAST_ADDR);
@@ -152,7 +163,7 @@ public class Router extends Device {
 	private void sendSolicitedRipResponse(Iface outIface, int destIP, MACAddress destMAC) {
 		System.out.println("Sending solicited RIP Response.");
 		RIPv2 req = new RIPv2();
-		/* TODO: figure out what to put in req */
+		req.setEntries(this.ripTable.entriesList(outIface));
 		req.setCommand(RIPv2.COMMAND_RESPONSE);
 		UDP udp = this.wrapRip(req);
 		IPv4 ipv4 = this.wrapUdp(udp, outIface.getIpAddress(), destIP);
@@ -171,18 +182,14 @@ public class Router extends Device {
 			// inIface becomes outIface; source address and source mac become dest address and dest mac
 			this.sendSolicitedRipResponse(inIface, sourceIP, sourceMAC);
 		} else if (rip.getCommand() == RIPv2.COMMAND_RESPONSE) {
-			System.out.println("hey");
-			for (RIPv2Entry entry : rip.getEntries()) {
-				/* TODO: Deal with these entries */
-				System.out.println(entry);
-			}
+			this.ripTable.update(inIface, rip.getEntries());
 		}
 	}
 
-	class RIPThread implements Runnable {
+	class UnsolicitedRipResponse implements Runnable {
 		private Router router;
 
-		public RIPThread(Router router) {
+		public UnsolicitedRipResponse(Router router) {
 			this.router = router;
 		}
 		public void run() {
@@ -192,15 +199,31 @@ public class Router extends Device {
 		}
 	}
 
+	class RipReaper implements Runnable {
+		private RipTable ripTable;
+
+		public RipReaper(RipTable ripTable) {
+			this.ripTable = ripTable;
+		}
+
+		public void run() {
+			this.ripTable.purgeStale();
+		}
+	}
+
 	class ARPThread implements Runnable {
 		private Iface outIface;
 		private Router caller;
 		private int neededIp;
+		private Map<Integer, Boolean> replyReceived;
+		private Map<Integer, LinkedList<Request>> queuedRequests;
 
 		public ARPThread(Iface outIface, Router caller, int nextHop) {
 			this.neededIp = nextHop;
 			this.outIface = outIface;
 			this.caller = caller;
+			this.replyReceived = caller.getReplyReceived();
+			this.queuedRequests = caller.getQueuedRequests();
 		}
 
 		public void run() {
@@ -216,21 +239,21 @@ public class Router extends Device {
 					e.printStackTrace();
 				}
 				// Check whether the calling Router has received the reply
-				synchronized (replyReceived) {
-					if (!replyReceived.isEmpty() && replyReceived.containsKey(neededIp))
-						received = replyReceived.get(neededIp);
+				synchronized (this.replyReceived) {
+					if (!this.replyReceived.isEmpty() && this.replyReceived.containsKey(neededIp))
+						received = this.replyReceived.get(neededIp);
 				}
 			}
 			/* Handle the queued requests for this */
-			synchronized (replyReceived) {
-				if (!replyReceived.isEmpty() && replyReceived.containsKey(neededIp))
-					received = replyReceived.get(neededIp);
+			synchronized (this.replyReceived) {
+				if (!this.replyReceived.isEmpty() && this.replyReceived.containsKey(neededIp))
+					received = this.replyReceived.get(neededIp);
 			}
 			System.out.println("Received the reply: " + received);
 			/* If we got a reply we can now forward the packets */
 			LinkedList<Request> pendingRequests;
-			synchronized (queuedRequests) {
-				pendingRequests = queuedRequests.get(neededIp);
+			synchronized (this.queuedRequests) {
+				pendingRequests = this.queuedRequests.get(neededIp);
 			}
 			if (received.booleanValue()) {
 				for (Request r : pendingRequests) {
@@ -246,11 +269,11 @@ public class Router extends Device {
 			}
 
 			/* Remove the entries from the shared data structures */
-			synchronized (replyReceived) {
-				replyReceived.remove(neededIp);
+			synchronized (this.replyReceived) {
+				this.replyReceived.remove(neededIp);
 			}
-			synchronized (queuedRequests) {
-				queuedRequests.remove(neededIp);
+			synchronized (this.queuedRequests) {
+				this.queuedRequests.remove(neededIp);
 			}
 		}
 	}
@@ -344,7 +367,7 @@ public class Router extends Device {
 		ArpEntry arpEntry = this.arpCache.lookup(nextHop);
 		if (arpEntry == null) {
 			System.out.println("arpEntry is null");
-			findArpEntry(nextHop, bestMatch, etherPacket, inIface);
+			this.findArpEntry(nextHop, bestMatch, etherPacket, inIface);
 			return;
 		}
 		/*
@@ -415,7 +438,7 @@ public class Router extends Device {
 		ArpEntry arpEntry = this.arpCache.lookup(nextHop);
 		if (arpEntry == null) {
 			System.out.println("arpEntry echo is null");
-			findArpEntry(nextHop, bestMatch, etherPacket, inIface);
+			this.findArpEntry(nextHop, bestMatch, etherPacket, inIface);
 			return;
 		}
 
@@ -492,9 +515,9 @@ public class Router extends Device {
 			arpCache.insert(senderArpMac, senderArpIp);
 
 			/* Update the shared data structure */
-			synchronized (replyReceived) {
-				if (!replyReceived.isEmpty() && replyReceived.containsKey(senderArpIp)) {
-					replyReceived.put(senderArpIp, true);
+			synchronized (this.replyReceived) {
+				if (!this.replyReceived.isEmpty() && this.replyReceived.containsKey(senderArpIp)) {
+					this.replyReceived.put(senderArpIp, true);
 				}
 			}
 		}
@@ -621,7 +644,7 @@ public class Router extends Device {
 		// Set destination MAC address in Ethernet header
 		ArpEntry arpEntry = this.arpCache.lookup(nextHop);
 		if (null == arpEntry) {
-			findArpEntry(nextHop, bestMatch, etherPacket, inIface);
+			this.findArpEntry(nextHop, bestMatch, etherPacket, inIface);
 			return;
 		}
 		etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
@@ -633,18 +656,18 @@ public class Router extends Device {
 	 * request in an effort to add the needed arp entry.*/
 	private void findArpEntry(int neededIp, RouteEntry bestMatch, Ethernet etherPacket, Iface inIface) {
 		/* Check if the ARP request has already been made. */
-		synchronized (replyReceived) {
+		synchronized (this.replyReceived) {
 			/* if it has, add the request to the queue */
-			if (replyReceived.containsKey(neededIp)) {
-				queuedRequests.get(neededIp).add(new Request(etherPacket, inIface));
+			if (this.replyReceived.containsKey(neededIp)) {
+				this.queuedRequests.get(neededIp).add(new Request(etherPacket, inIface));
 				System.out.println("ARP thread already exists queueing new request");
 			}
 			/* Otherwise created a new thread to generate the request */
 			else {
 				System.out.println("Creating thread to issue ARP requests");
-				replyReceived.put(neededIp, false);
-				queuedRequests.put(neededIp, new LinkedList<Request>());
-				queuedRequests.get(neededIp).add(new Request(etherPacket, inIface));
+				this.replyReceived.put(neededIp, false);
+				this.queuedRequests.put(neededIp, new LinkedList<Request>());
+				this.queuedRequests.get(neededIp).add(new Request(etherPacket, inIface));
 				Thread t = new Thread(new ARPThread(bestMatch.getInterface(), this, neededIp));
 				t.start();
 			}
