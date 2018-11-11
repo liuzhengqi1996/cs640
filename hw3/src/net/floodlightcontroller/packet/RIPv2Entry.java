@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 /**
   * @author Anubhavnidhi Abhashkumar and Aaron Gember-Jacobson
   */
-public class RIPv2Entry 
+public class RIPv2Entry
 {
     public static final short ADDRESS_FAMILY_IPv4 = 2;
 
@@ -29,9 +29,9 @@ public class RIPv2Entry
 
 	public String toString()
 	{
-        return String.format("RIPv2Entry : {addressFamily=%d, routeTag=%d, address=%s, subnetMask=%s, nextHopAddress=%s, metric=%d}", 
-                this.addressFamily, this.routeTag, 
-                IPv4.fromIPv4Address(this.address), 
+        return String.format("RIPv2Entry : {addressFamily=%d, routeTag=%d, address=%s, subnetMask=%s, nextHopAddress=%s, metric=%d}",
+                this.addressFamily, this.routeTag,
+                IPv4.fromIPv4Address(this.address),
                 IPv4.fromIPv4Address(this.subnetMask),
                 IPv4.fromIPv4Address(this.nextHopAddress), this.metric);
 	}
@@ -72,7 +72,7 @@ public class RIPv2Entry
     public void setMetric(int metric)
     { this.metric = metric; }
 
-	public byte[] serialize() 
+	public byte[] serialize()
     {
 		int length = 2*2 + 4*4;
 		byte[] data = new byte[length];
@@ -87,7 +87,7 @@ public class RIPv2Entry
 		return data;
 	}
 
-	public RIPv2Entry deserialize(byte[] data, int offset, int length) 
+	public RIPv2Entry deserialize(byte[] data, int offset, int length)
 	{
 		ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
 
@@ -121,6 +121,6 @@ public class RIPv2Entry
         { return false; }
         if (this.metric != other.metric)
         { return false; }
-        return true; 
+        return true;
     }
 }

@@ -7,7 +7,7 @@ import java.util.LinkedList;
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
  */
-public class RIPv2 extends BasePacket 
+public class RIPv2 extends BasePacket
 {
     public static final byte VERSION = 2;
     public static final byte COMMAND_REQUEST = 1;
@@ -18,8 +18,8 @@ public class RIPv2 extends BasePacket
 	protected List<RIPv2Entry> entries;
 
 	public RIPv2()
-	{ 
-        super(); 
+	{
+        super();
         this.version = VERSION;
         this.entries = new LinkedList<RIPv2Entry>();
     }
@@ -32,7 +32,7 @@ public class RIPv2 extends BasePacket
 
     public void addEntry(RIPv2Entry entry)
     { this.entries.add(entry); }
-	
+
 	public void setCommand(byte command)
 	{ this.command = command; }
 
@@ -40,7 +40,7 @@ public class RIPv2 extends BasePacket
 	{ return this.command; }
 
 	@Override
-	public byte[] serialize() 
+	public byte[] serialize()
     {
 		int length = 1 + 1 + 2 + this.entries.size() * (5*4);
 		byte[] data = new byte[length];
@@ -56,7 +56,7 @@ public class RIPv2 extends BasePacket
 	}
 
 	@Override
-	public IPacket deserialize(byte[] data, int offset, int length) 
+	public IPacket deserialize(byte[] data, int offset, int length)
 	{
 		ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
 
@@ -94,7 +94,7 @@ public class RIPv2 extends BasePacket
             if (!this.entries.get(i).equals(other.entries.get(i)))
             { return false; }
         }
-        return true; 
+        return true;
     }
 
 	public String toString()
