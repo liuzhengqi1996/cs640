@@ -1,15 +1,16 @@
 package edu.wisc.cs.sdn.apps.loadbalancer;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFType;
+import edu.wisc.cs.sdn.apps.l3routing.L3Routing;
+import edu.wisc.cs.sdn.apps.util.SwitchCommands;
+import org.openflow.protocol.*;
 
+import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.protocol.instruction.OFInstruction;
+import org.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,6 +113,22 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 	}
+
+	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction instruction) {
+		installRule(sw, match, instruction, 0);
+	}
+
+	// priorityModifer adds or subtracts from the default value
+	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction instruction, int priorityModifer) {
+		short priority = (short) (SwitchCommands.DEFAULT_PRIORITY + priorityModifer);
+		SwitchCommands.installRule(sw, table, priority, match, Arrays.asList(instruction));
+	}
+
+	// Apply actions instruction; pretty sure we need new instances each time which is annoying
+	private OFInstruction applyActionsInstruction() {
+		OFAction action = new OFActionOutput(OFPort.OFPP_CONTROLLER);
+		return new OFInstructionApplyActions(Arrays.asList(action));
+	}
 	
 	/**
      * Event handler called when a switch joins the network.
@@ -131,6 +148,26 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		/*       (3) all other packets to the next rule table in the switch  */
 		
 		/*********************************************************************/
+
+		for (int vip : instances.keySet()) {
+			// (1) packets from new connections to each virtual load balancer IP to the controller
+			OFMatch matchIpv4 = new OFMatch();
+			matchIpv4.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+			matchIpv4.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
+			matchIpv4.setNetworkDestination(vip);
+			installRule(sw, matchIpv4, applyActionsInstruction());
+		}
+
+		// (2) ARP packets to the controller, and
+		OFMatch matchArp = new OFMatch();
+		matchArp.setDataLayerType(OFMatch.ETH_TYPE_ARP);
+		installRule(sw, matchArp, applyActionsInstruction());
+
+		// (3) all other packets to the next rule table in the switch
+		OFMatch matchOther = new OFMatch();
+		OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+		installRule(sw, matchOther, gotoTableInstruction, -1);
+
 	}
 	
 	/**
