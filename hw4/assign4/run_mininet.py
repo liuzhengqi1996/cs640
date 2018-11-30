@@ -7,10 +7,10 @@ import sys
 from mininet.cli import CLI
 from mininet.net import Mininet
 from mininet.node import OVSSwitch, RemoteController
-from mininet.topo import Topo,SingleSwitchTopo,LinearTopo
+from mininet.topo import Topo, SingleSwitchTopo, LinearTopo
 from mininet.topolib import TreeTopo
 from mininet.log import setLogLevel, info
-from mininet.util import customConstructor,quietRun
+from mininet.util import customClass, quietRun
 
 class AssignOneTopo(Topo):
     def __init__(self, **opts):
@@ -46,7 +46,7 @@ class AssignOneTopo(Topo):
         self.addLink(s3, s4)
         self.addLink(s2, s5)
         self.addLink(s3, s6)
- 
+
 class TriangleTopo(Topo):
     def __init__(self, **opts):
         Topo.__init__(self, **opts)
@@ -101,7 +101,7 @@ class MeshTopo(Topo):
         for i in range(0,n-1):
             for j in range(i+1,n):
                 self.addLink(switches[i], switches[j])
-     
+
 def starthttp(host):
     "Start simple Python web server on hosts"
     info( '*** Starting SimpleHTTPServer on host', host, '\n' )
@@ -111,11 +111,11 @@ def starthttp(host):
 
 def stophttp():
     "Stop simple Python web servers"
-    info( '*** Shutting down stale SimpleHTTPServers', 
-          quietRun( "pkill -9 -f SimpleHTTPServer" ), '\n' )    
-    info( '*** Shutting down stale webservers', 
-          quietRun( "pkill -9 -f webserver.py" ), '\n' )    
-   
+    info( '*** Shutting down stale SimpleHTTPServers',
+          quietRun( "pkill -9 -f SimpleHTTPServer" ), '\n' )
+    info( '*** Shutting down stale webservers',
+          quietRun( "pkill -9 -f webserver.py" ), '\n' )
+
 if __name__ == '__main__':
     setLogLevel( 'info' )
 
@@ -149,18 +149,17 @@ if __name__ == '__main__':
         topo = SomeLoopsTopo()
     else:
         print 'Unknown topology'
-        sys.exit(1) 
+        sys.exit(1)
 
     net = Mininet(topo=topo, autoSetMacs=True, controller=RemoteController,
-            switch=customConstructor({'ovsk' : OVSSwitch}, "ovsk,protocols=OpenFlow13"))
+            switch=customClass({'ovsk' : OVSSwitch}, "ovsk,protocols=OpenFlow13"))
 
     # Run network
     net.start()
-    for h in net.hosts: 
+    for h in net.hosts:
         info('*** ARPing from host %s\n' % (h.name))
         h.cmd('arping -c 2 -A -I '+h.name+'-eth0 '+h.IP())
         starthttp(h)
     CLI( net )
     stophttp()
     net.stop()
-
