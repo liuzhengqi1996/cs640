@@ -217,7 +217,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				ARP arpPkt = (ARP)ethPkt.getPayload();
 				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
 					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
-					byte[] destMACAddress = this.getHostMACAddress(virtualDestIp);
+					LoadBalancerInstance instance = instances.get(virtualDestIp);
+					byte[] destMACAddress = instance.getVirtualMAC();
 
 					/*Construct the new packet to send*/
 					ARP arpReply = new ARP();
@@ -225,13 +226,14 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 					arpReply.setProtocolType(ARP.PROTO_TYPE_IP);
 					arpReply.setOpCode(ARP.OP_REPLY);
 					arpReply.setProtocolAddressLength(arpPkt.getProtocolAddressLength());
-					arpReply.setSenderProtocolAddress(arpPkt.getTargetProtocolAddress());
-					arpReply.setSenderHardwareAddress(destMACAddress);
+					arpReply.setSenderProtocolAddress(virtualDestIp); // virtual ip
+					arpReply.setSenderHardwareAddress(destMACAddress); // virtual mac
 					arpReply.setHardwareAddressLength(arpPkt.getHardwareAddressLength());
 					arpReply.setTargetHardwareAddress(arpPkt.getSenderHardwareAddress());
 					arpReply.setTargetProtocolAddress(arpPkt.getSenderProtocolAddress());
 
 					Ethernet replyPacket = new Ethernet();
+					replyPacket.setSourceMACAddress(destMACAddress);
 					replyPacket.setDestinationMACAddress(ethPkt.getSourceMACAddress());
 					replyPacket.setEtherType(Ethernet.TYPE_ARP);
 					replyPacket.setPayload(arpReply);
