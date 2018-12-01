@@ -270,10 +270,11 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchToVIP.setTransportSource(tcpPkt.getSourcePort());
 				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
 
-				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), nextHostIP));
+				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(getHostMACAddress(nextHostIP), nextHostIP));
 //				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
-				log.info("Table: ", matchToVIP, applyActions);
+				log.info("match: " + matchToVIP);
+				log.info("applyActions: " + applyActions);
 
 				// server to host
 				OFMatch matchFromVIP = new OFMatch();
@@ -285,11 +286,12 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), ipv4Pkt.getDestinationAddress()));
+				applyActions = new OFInstructionApplyActions(sourceActionList(getHostMACAddress(ipv4Pkt.getDestinationAddress()), ipv4Pkt.getDestinationAddress()));
 //				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
-				log.info("Table: ", matchFromVIP, applyActions);
+				log.info("match: " + matchFromVIP);
+				log.info("applyActions: " + applyActions);
 
 			} break;
 			default: {
