@@ -168,12 +168,13 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 			matchIpv4.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
 			matchIpv4.setNetworkDestination(vip);
 			installRule(sw, matchIpv4, 1, applyActionsInstruction());
-		}
 
-		// (2) ARP packets to the controller, and
-		OFMatch matchArp = new OFMatch();
-		matchArp.setDataLayerType(OFMatch.ETH_TYPE_ARP);
-		installRule(sw, matchArp, 1, applyActionsInstruction());
+			// (2) ARP packets to the controller, and
+			OFMatch matchArp = new OFMatch();
+			matchArp.setDataLayerType(OFMatch.ETH_TYPE_ARP);
+			matchArp.setField(OFOXMFieldType.ARP_TPA, vip);
+			installRule(sw, matchArp, 1, applyActionsInstruction());
+		}
 
 		// (3) all other packets to the next rule table in the switch
 		OFMatch matchOther = new OFMatch();
