@@ -277,8 +277,10 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchToVIP.setTransportSource(tcpPkt.getSourcePort());
 				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
 
-				log.info("destination MAC = "+getHostMACAddress(nextHostIP)+"; destination IP = "+nextHostIP);
-				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), nextHostIP));
+				log.info("destination MAC = "+ new MACAddress(getHostMACAddress(nextHostIP)) +"; destination IP = "+ IPv4.fromIPv4Address(nextHostIP));
+				OFAction ipAction = new OFActionSetField(OFOXMFieldType.IPV4_DST, nextHostIP);
+				OFAction ethAction = new OFActionSetField(OFOXMFieldType.ETH_DST, this.getHostMACAddress(nextHostIP));
+				OFInstruction applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
 				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchToVIP);
@@ -294,8 +296,11 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				log.info("source MAC = "+instance.getVirtualMAC()+"; nextHost IP = "+destinationIP);
-				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), destinationIP));
+				log.info("destination MAC = "+ new MACAddress(instance.getVirtualMAC()) +"; destination IP = "+ IPv4.fromIPv4Address(destinationIP));
+
+				ipAction = new OFActionSetField(OFOXMFieldType.IPV4_SRC, destinationIP);
+				ethAction = new OFActionSetField(OFOXMFieldType.ETH_DST, instance.getVirtualMAC());
+				applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchFromVIP);
@@ -309,6 +314,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		}
 
 		// We don't care about other packets
+		log.info("Reached continued...");
 		return Command.CONTINUE;
 	}
 
