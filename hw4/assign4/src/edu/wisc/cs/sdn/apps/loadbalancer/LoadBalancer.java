@@ -217,8 +217,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				ARP arpPkt = (ARP)ethPkt.getPayload();
 				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
 					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
-					if (!instances.containsKey(vip)) {
-						log.warn("Ignore packet because we don't have an instance for virtual address " + vip);
+					if (!instances.containsKey(virtualDestIp)) {
+						log.warn("Ignore packet because we don't have an instance for virtual address " + virtualDestIp);
 						break;
 					}
 					LoadBalancerInstance instance = instances.get(virtualDestIp);
