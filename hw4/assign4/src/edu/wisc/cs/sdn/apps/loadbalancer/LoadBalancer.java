@@ -255,7 +255,6 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 					break;
 				}
 				log.info("It's an TCP SYN thingy.");
-				log.info("Table: ", table);
 				int vip = ipv4Pkt.getDestinationAddress();
 				if (!instances.containsKey(vip)) {
 					log.warn("Ignore packet because we don't have an instance for virtual address " + vip);
@@ -289,7 +288,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), vip));
+				applyActions = new OFInstructionApplyActions(sourceActionList(getHostMACAddress(vip), vip));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchFromVIP);
