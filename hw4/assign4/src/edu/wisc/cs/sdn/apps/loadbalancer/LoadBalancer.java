@@ -1,9 +1,13 @@
 package edu.wisc.cs.sdn.apps.loadbalancer;
 
 import java.util.*;
+import java.nio.ByteBuffer;
 
 import edu.wisc.cs.sdn.apps.l3routing.L3Routing;
 import edu.wisc.cs.sdn.apps.util.SwitchCommands;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.ARP;
 import org.openflow.protocol.*;
 
 import org.openflow.protocol.action.OFAction;
@@ -118,9 +122,9 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		installRule(sw, match, instruction, 0);
 	}
 
-	// priorityModifer adds or subtracts from the default value
-	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction instruction, int priorityModifer) {
-		short priority = (short) (SwitchCommands.DEFAULT_PRIORITY + priorityModifer);
+	// priorityModifier adds or subtracts from the default value
+	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction instruction, int priorityModifier) {
+		short priority = (short) (SwitchCommands.DEFAULT_PRIORITY + priorityModifier);
 		SwitchCommands.installRule(sw, table, priority, match, Arrays.asList(instruction));
 	}
 
@@ -199,10 +203,41 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 
-		
+		switch(ethPkt.getEtherType()) {
+			case Ethernet.TYPE_ARP: {
+				log.info("Paul's stuff");
+				ARP arpPkt = (ARP)ethPkt.getPayload();
+				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
+					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
+					byte[] destMACAddress = this.getHostMACAddress(virtualDestIp);
+					/*Construct the new packet to send*/
+					ARP arpReply = new ARP();
+					arpReply.setHardwareType(ARP.HW_TYPE_ETHERNET);
+					arpReply.setProtocolType(ARP.PROTO_TYPE_IP);
+					arpReply.setOpCode(ARP.OP_REPLY);
+					arpReply.setSenderHardwareAddress(destMACAddress);
+					arpReply.setTargetHardwareAddress(arpPkt.getSenderHardwareAddress());
+					arpReply.setTargetProtocolAddress(arpPkt.getSenderProtocolAddress());
+					Ethernet replyPacket = new Ethernet();
+					replyPacket.setDestinationMACAddress(ethPkt.getSourceMACAddress());
+					replyPacket.setEtherType(Ethernet.TYPE_ARP);
+					SwitchCommands.sendPacket(sw, (short) pktIn.getInPort(), replyPacket);
+				}
+			} break;
+			case Ethernet.TYPE_IPv4: {
+				log.info("Kendall's stuff");
+			} break;
+			default: {
+				// do nothing!!!
+				log.info("Do nothing because it's not part of the project.");
+			} break;
+		}
+
 		// We don't care about other packets
 		return Command.CONTINUE;
 	}
+
+
 	
 	/**
 	 * Returns the MAC address for a host, given the host's IP address.
