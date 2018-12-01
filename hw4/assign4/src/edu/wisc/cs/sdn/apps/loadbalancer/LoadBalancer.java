@@ -271,7 +271,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
 
 				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(getHostMACAddress(nextHostIP), nextHostIP));
-//				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+
 				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchToVIP);
 				log.info("applyActions: " + applyActions);
@@ -286,8 +286,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				applyActions = new OFInstructionApplyActions(sourceActionList(getHostMACAddress(ipv4Pkt.getDestinationAddress()), ipv4Pkt.getDestinationAddress()));
-//				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+				applyActions = new OFInstructionApplyActions(sourceActionList(instance.get(vip).getVirtualMAC(), vip));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchFromVIP);
@@ -313,8 +312,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 	}
 
 	private List<OFAction> actionList(OFOXMFieldType ethFieldType, byte[] mac, OFOXMFieldType ipv4FieldType, int ip) {
-		OFAction actionSetFieldEth = new OFActionSetField(ethFieldType, mac);
 		OFAction actionSetFieldIp = new OFActionSetField(ipv4FieldType, ip);
+		OFAction actionSetFieldEth = new OFActionSetField(ethFieldType, mac);
 		return Arrays.asList(actionSetFieldEth, actionSetFieldIp);
 	}
 
