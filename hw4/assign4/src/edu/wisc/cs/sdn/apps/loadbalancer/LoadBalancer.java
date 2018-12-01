@@ -217,9 +217,13 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				ARP arpPkt = (ARP)ethPkt.getPayload();
 				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
 					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
-//					LoadBalancerInstance instance = instances.get(virtualDestIp);
-//					byte[] destMACAddress = instance.getVirtualMAC();
-					byte[] destMACAddress = getHostMACAddress(virtualDestIp);
+					if (!instances.containsKey(vip)) {
+						log.warn("Ignore packet because we don't have an instance for virtual address " + vip);
+						break;
+					}
+					LoadBalancerInstance instance = instances.get(virtualDestIp);
+					byte[] destMACAddress = instance.getVirtualMAC();
+//					byte[] destMACAddress = getHostMACAddress(virtualDestIp);
 
 					/*Construct the new packet to send*/
 					ARP arpReply = new ARP();
@@ -289,7 +293,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				applyActions = new OFInstructionApplyActions(sourceActionList(getHostMACAddress(vip), vip));
+				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), vip));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchFromVIP);
