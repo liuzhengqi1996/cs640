@@ -248,11 +248,14 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 					log.warn("Ignore packet because it was not TCP");
 					break;
 				}
+				log.info("It's an IPv4 packet.");
 				TCP tcpPkt = (TCP) ipv4Pkt.getPayload();
 				if (tcpPkt.getFlags() != TCP_FLAG_SYN) {
 					log.warn("Ignore packet because it was not TCP SYN");
 					break;
 				}
+				log.info("It's an TCP SYN thingy.");
+				log.info("Table: ", table);
 
 				int vip = ipv4Pkt.getDestinationAddress();
 				LoadBalancerInstance instance = instances.get(vip);
@@ -267,9 +270,10 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchToVIP.setTransportSource(tcpPkt.getSourcePort());
 				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
 
-				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), ipv4Pkt.getSourceAddress()));
+				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), nextHostIP));
 //				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 				installRuleWithIdleTimeout(sw, matchToVIP, 1, applyActions); //, gotoTableInstruction);
+				log.info("Table: ", table);
 
 				// server to host
 				OFMatch matchFromVIP = new OFMatch();
@@ -281,10 +285,11 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), instance.getVirtualIP()));
+				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), ipv4Pkt.getDestinationAddress()));
 //				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 
 				installRuleWithIdleTimeout(sw, matchToVIP, 1, applyActions); //, gotoTableInstruction);
+				log.info("Table: ", table);
 
 			} break;
 			default: {
