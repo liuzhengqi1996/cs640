@@ -10,7 +10,7 @@ from mininet.node import OVSSwitch, RemoteController
 from mininet.topo import Topo, SingleSwitchTopo, LinearTopo
 from mininet.topolib import TreeTopo
 from mininet.log import setLogLevel, info
-from mininet.util import customClass, quietRun
+from mininet.util import customConstructor, quietRun
 
 class AssignOneTopo(Topo):
     def __init__(self, **opts):
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     net = Mininet(topo=topo, autoSetMacs=True, controller=RemoteController,
-            switch=customClass({'ovsk' : OVSSwitch}, "ovsk,protocols=OpenFlow13"))
+            switch=customConstructor({'ovsk' : OVSSwitch}, "ovsk,protocols=OpenFlow13"))
 
     # Run network
     net.start()
