@@ -167,18 +167,18 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 			matchIpv4.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
 			matchIpv4.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
 			matchIpv4.setNetworkDestination(vip);
-			installRule(sw, matchIpv4, applyActionsInstruction());
+			installRule(sw, matchIpv4, 1, applyActionsInstruction());
 		}
 
 		// (2) ARP packets to the controller, and
 		OFMatch matchArp = new OFMatch();
 		matchArp.setDataLayerType(OFMatch.ETH_TYPE_ARP);
-		installRule(sw, matchArp, applyActionsInstruction());
+		installRule(sw, matchArp, 1, applyActionsInstruction());
 
 		// (3) all other packets to the next rule table in the switch
 		OFMatch matchOther = new OFMatch();
-		OFInstruction gotoTableInstruction = new OFInstructionGotoTable((byte) (table+1));
-		installRule(sw, matchOther, -1, gotoTableInstruction);
+		OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+		installRule(sw, matchOther, 0, gotoTableInstruction);
 
 	}
 	
@@ -272,7 +272,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), nextHostIP));
 //				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
-				installRuleWithIdleTimeout(sw, matchToVIP, 1, applyActions); //, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("Table: ", matchToVIP, applyActions);
 
 				// server to host
@@ -288,7 +288,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), ipv4Pkt.getDestinationAddress()));
 //				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 
-				installRuleWithIdleTimeout(sw, matchFromVIP, 1, applyActions); //, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("Table: ", matchFromVIP, applyActions);
 
 			} break;
