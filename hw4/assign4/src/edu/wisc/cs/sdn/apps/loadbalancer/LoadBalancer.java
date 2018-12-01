@@ -177,7 +177,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 		// (3) all other packets to the next rule table in the switch
 		OFMatch matchOther = new OFMatch();
-		OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+		OFInstruction gotoTableInstruction = new OFInstructionGotoTable((byte) (table+1));
 		installRule(sw, matchOther, -1, gotoTableInstruction);
 
 	}
@@ -270,8 +270,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
 
 				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), ipv4Pkt.getSourceAddress()));
-				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
-				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions, gotoTableInstruction);
+//				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions); //, gotoTableInstruction);
 
 				// server to host
 				OFMatch matchFromVIP = new OFMatch();
@@ -284,9 +284,9 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
 				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), instance.getVirtualIP()));
-				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+//				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 
-				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions); //, gotoTableInstruction);
 
 			} break;
 			default: {
