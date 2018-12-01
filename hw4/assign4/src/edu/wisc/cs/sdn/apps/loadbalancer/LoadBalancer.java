@@ -244,14 +244,12 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 			case Ethernet.TYPE_IPv4: {
 				log.info("Handling IPv4 TCP");
 				IPv4 ipv4Pkt = (IPv4) ethPkt.getPayload();
-
-				TCP tcpPkt = (TCP) ipv4Pkt.getPayload();
-
 				if (ipv4Pkt.getProtocol() != IPv4.PROTOCOL_TCP) {
 					log.warn("Ignore packet because it was not TCP");
 					break;
 				}
-				if (ipv4Pkt.getFlags() != TCP_FLAG_SYN) {
+				TCP tcpPkt = (TCP) ipv4Pkt.getPayload();
+				if (tcpPkt.getFlags() != TCP_FLAG_SYN) {
 					log.warn("Ignore packet because it was not TCP SYN");
 					break;
 				}
