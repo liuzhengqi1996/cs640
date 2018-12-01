@@ -278,7 +278,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4); // need to add eth type first!!!
 				matchFromVIP.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
 				// the following is essentially reverse of the above
-				matchFromVIP.setNetworkSource(vip);
+				matchFromVIP.setNetworkSource(nextHostIP);
 				matchFromVIP.setNetworkDestination(ipv4Pkt.getSourceAddress());
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
