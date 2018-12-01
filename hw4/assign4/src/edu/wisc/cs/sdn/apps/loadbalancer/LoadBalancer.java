@@ -218,18 +218,25 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
 					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
 					byte[] destMACAddress = this.getHostMACAddress(virtualDestIp);
+
 					/*Construct the new packet to send*/
 					ARP arpReply = new ARP();
 					arpReply.setHardwareType(ARP.HW_TYPE_ETHERNET);
 					arpReply.setProtocolType(ARP.PROTO_TYPE_IP);
 					arpReply.setOpCode(ARP.OP_REPLY);
+					arpReply.setProtocolAddressLength(arpPkt.getProtocolAddressLength());
+					arpReply.setSenderProtocolAddress(arpPkt.getTargetProtocolAddress());
 					arpReply.setSenderHardwareAddress(destMACAddress);
+					arpReply.setHardwareAddressLength(arpPkt.getHardwareAddressLength());
 					arpReply.setTargetHardwareAddress(arpPkt.getSenderHardwareAddress());
 					arpReply.setTargetProtocolAddress(arpPkt.getSenderProtocolAddress());
+
 					Ethernet replyPacket = new Ethernet();
 					replyPacket.setDestinationMACAddress(ethPkt.getSourceMACAddress());
 					replyPacket.setEtherType(Ethernet.TYPE_ARP);
-					SwitchCommands.sendPacket(sw, (short) pktIn.getInPort(), replyPacket);
+					replyPacket.setPayload(arpReply);
+
+					SwitchCommands.sendPacket(sw, (short)pktIn.getInPort(), replyPacket);
 				}
 			} break;
 			case Ethernet.TYPE_IPv4: {
