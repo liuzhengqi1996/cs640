@@ -260,12 +260,12 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 					break;
 				}
 				log.info("It's an TCP SYN thingy.");
-				int vip = ipv4Pkt.getDestinationAddress();
-				if (!instances.containsKey(vip)) {
-					log.warn("Ignore packet because we don't have an instance for virtual address " + vip);
+				int destinationIP = ipv4Pkt.getDestinationAddress();
+				if (!instances.containsKey(destinationIP)) {
+					log.warn("Ignore packet because we don't have an instance for virtual address " + destinationIP);
 					break;
 				}
-				LoadBalancerInstance instance = instances.get(vip);
+				LoadBalancerInstance instance = instances.get(destinationIP);
 				int nextHostIP = instance.getNextHostIP();
 
 				// host to virtual ip
@@ -273,11 +273,12 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchToVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4); // need to add eth type first!!!
 				matchToVIP.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
 				matchToVIP.setNetworkSource(ipv4Pkt.getSourceAddress());
-				matchToVIP.setNetworkDestination(vip); // instead we send to virtual IP
+				matchToVIP.setNetworkDestination(destinationIP); // instead we send to virtual IP
 				matchToVIP.setTransportSource(tcpPkt.getSourcePort());
 				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
 
-				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(getHostMACAddress(nextHostIP), nextHostIP));
+				log.info("destination MAC = "+getHostMACAddress(nextHostIP)+"; destination IP = "+nextHostIP);
+				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), nextHostIP));
 
 				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchToVIP);
@@ -293,7 +294,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), vip));
+				log.info("source MAC = "+instance.getVirtualMAC()+"; nextHost IP = "+destinationIP);
+				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), destinationIP));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
 				log.info("match: " + matchFromVIP);
@@ -321,7 +323,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 	private List<OFAction> actionList(OFOXMFieldType ethFieldType, byte[] mac, OFOXMFieldType ipv4FieldType, int ip) {
 		OFAction actionSetFieldIp = new OFActionSetField(ipv4FieldType, ip);
 		OFAction actionSetFieldEth = new OFActionSetField(ethFieldType, mac);
-		return Arrays.asList(actionSetFieldEth, actionSetFieldIp);
+		return Arrays.asList(actionSetFieldIp, actionSetFieldEth);
 	}
 
 	/**
