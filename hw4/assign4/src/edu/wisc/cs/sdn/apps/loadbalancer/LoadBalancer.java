@@ -12,6 +12,7 @@ import org.openflow.protocol.*;
 
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.protocol.action.OFActionSetField;
 import org.openflow.protocol.instruction.OFInstruction;
 import org.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.openflow.protocol.instruction.OFInstructionGotoTable;
@@ -118,14 +119,21 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		/*********************************************************************/
 	}
 
-	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction instruction) {
-		installRule(sw, match, instruction, 0);
+	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction... instructions) {
+		installRule(sw, match, 0, instructions);
 	}
 
 	// priorityModifier adds or subtracts from the default value
-	private void installRule(IOFSwitch sw, OFMatch match, OFInstruction instruction, int priorityModifier) {
+	private void installRule(IOFSwitch sw, OFMatch match, int priorityModifier, OFInstruction... instructions) {
 		short priority = (short) (SwitchCommands.DEFAULT_PRIORITY + priorityModifier);
-		SwitchCommands.installRule(sw, table, priority, match, Arrays.asList(instruction));
+		SwitchCommands.removeRules(sw, table, match);
+		SwitchCommands.installRule(sw, table, priority, match, Arrays.asList(instructions));
+	}
+
+	private void installRuleWithIdleTimeout(IOFSwitch sw, OFMatch match, int priorityModifier, OFInstruction... instructions) {
+		short priority = (short) (SwitchCommands.DEFAULT_PRIORITY + priorityModifier);
+		SwitchCommands.removeRules(sw, table, match);
+		SwitchCommands.installRule(sw, table, priority, match, Arrays.asList(instructions), SwitchCommands.NO_TIMEOUT, LoadBalancer.IDLE_TIMEOUT);
 	}
 
 	// Apply actions instruction; pretty sure we need new instances each time which is annoying
@@ -170,7 +178,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		// (3) all other packets to the next rule table in the switch
 		OFMatch matchOther = new OFMatch();
 		OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
-		installRule(sw, matchOther, gotoTableInstruction, -1);
+		installRule(sw, matchOther, -1, gotoTableInstruction);
 
 	}
 	
@@ -226,6 +234,51 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 			} break;
 			case Ethernet.TYPE_IPv4: {
 				log.info("Kendall's stuff");
+				IPv4 ipv4Pkt = (IPv4) ethPkt.getPayload();
+
+				TCP tcpPkt = (TCP) ipv4Pkt.getPayload();
+
+				if (ipv4Pkt.getProtocol() != IPv4.PROTOCOL_TCP) {
+					log.warn("Ignore packet because it was not TCP");
+					break;
+				}
+				if (ipv4Pkt.getFlags() != TCP_FLAG_SYN) {
+					log.warn("Ignore packet because it was not TCP SYN");
+					break;
+				}
+
+				int vip = ipv4Pkt.getDestinationAddress();
+				LoadBalancerInstance instance = instances.get(vip);
+				int nextHostIP = instance.getNextHostIP();
+
+				// host to virtual ip
+				OFMatch matchToVIP = new OFMatch();
+				matchToVIP.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
+				matchToVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+				matchToVIP.setNetworkSource(ipv4Pkt.getSourceAddress());
+				matchToVIP.setNetworkDestination(vip); // instead we send to virtual IP
+				matchToVIP.setTransportSource(tcpPkt.getSourcePort());
+				matchToVIP.setTransportDestination(tcpPkt.getDestinationPort());
+
+				OFInstruction applyActions = new OFInstructionApplyActions(sourceActionList(this.getHostMACAddress(nextHostIP), ipv4Pkt.getSourceAddress()));
+				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions, gotoTableInstruction);
+
+				// server to host
+				OFMatch matchFromVIP = new OFMatch();
+				matchFromVIP.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
+				matchFromVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+				// the following is essentially reverse of the above
+				matchFromVIP.setNetworkSource(vip);
+				matchFromVIP.setNetworkDestination(ipv4Pkt.getSourceAddress());
+				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
+				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
+
+				applyActions = new OFInstructionApplyActions(destinationActionList(instance.getVirtualMAC(), instance.getVirtualIP()));
+				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
+
+				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions, gotoTableInstruction);
+
 			} break;
 			default: {
 				// do nothing!!!
@@ -237,8 +290,20 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		return Command.CONTINUE;
 	}
 
+	private List<OFAction> sourceActionList(byte[] mac, int ip) {
+		return actionList(OFOXMFieldType.ETH_SRC, mac, OFOXMFieldType.IPV4_SRC, ip);
+	}
 
-	
+	private List<OFAction> destinationActionList(byte[] mac, int ip) {
+		return actionList(OFOXMFieldType.ETH_DST, mac, OFOXMFieldType.IPV4_DST, ip);
+	}
+
+	private List<OFAction> actionList(OFOXMFieldType ethFieldType, byte[] mac, OFOXMFieldType ipv4FieldType, int ip) {
+		OFAction actionSetFieldEth = new OFActionSetField(ethFieldType, mac);
+		OFAction actionSetFieldIp = new OFActionSetField(ipv4FieldType, ip);
+		return Arrays.asList(actionSetFieldEth, actionSetFieldIp);
+	}
+
 	/**
 	 * Returns the MAC address for a host, given the host's IP address.
 	 * @param hostIPAddress the host's IP address
