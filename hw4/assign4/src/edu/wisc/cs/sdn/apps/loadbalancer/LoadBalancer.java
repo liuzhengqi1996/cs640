@@ -213,7 +213,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 		switch(ethPkt.getEtherType()) {
 			case Ethernet.TYPE_ARP: {
-				log.info("Paul's stuff");
+				log.info("Handling ARP");
 				ARP arpPkt = (ARP)ethPkt.getPayload();
 				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
 					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
@@ -242,7 +242,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				}
 			} break;
 			case Ethernet.TYPE_IPv4: {
-				log.info("Kendall's stuff");
+				log.info("Handling IPv4 TCP");
 				IPv4 ipv4Pkt = (IPv4) ethPkt.getPayload();
 
 				TCP tcpPkt = (TCP) ipv4Pkt.getPayload();
