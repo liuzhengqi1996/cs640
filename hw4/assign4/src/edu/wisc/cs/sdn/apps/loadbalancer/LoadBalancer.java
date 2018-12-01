@@ -262,8 +262,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 				// host to virtual ip
 				OFMatch matchToVIP = new OFMatch();
+				matchToVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4); // need to add eth type first!!!
 				matchToVIP.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
-				matchToVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
 				matchToVIP.setNetworkSource(ipv4Pkt.getSourceAddress());
 				matchToVIP.setNetworkDestination(vip); // instead we send to virtual IP
 				matchToVIP.setTransportSource(tcpPkt.getSourcePort());
@@ -275,8 +275,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 				// server to host
 				OFMatch matchFromVIP = new OFMatch();
+				matchFromVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4); // need to add eth type first!!!
 				matchFromVIP.setNetworkProtocol(OFMatch.IP_PROTO_TCP);
-				matchFromVIP.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
 				// the following is essentially reverse of the above
 				matchFromVIP.setNetworkSource(vip);
 				matchFromVIP.setNetworkDestination(ipv4Pkt.getSourceAddress());
