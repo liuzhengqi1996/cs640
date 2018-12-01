@@ -217,8 +217,9 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				ARP arpPkt = (ARP)ethPkt.getPayload();
 				if(arpPkt.getOpCode() == ARP.OP_REQUEST) {
 					int virtualDestIp = ByteBuffer.wrap(arpPkt.getTargetProtocolAddress()).getInt();
-					LoadBalancerInstance instance = instances.get(virtualDestIp);
-					byte[] destMACAddress = instance.getVirtualMAC();
+//					LoadBalancerInstance instance = instances.get(virtualDestIp);
+//					byte[] destMACAddress = instance.getVirtualMAC();
+					byte[] destMACAddress = getHostMACAddress(virtualDestIp);
 
 					/*Construct the new packet to send*/
 					ARP arpReply = new ARP();
