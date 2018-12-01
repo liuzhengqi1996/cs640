@@ -271,7 +271,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 				OFInstruction applyActions = new OFInstructionApplyActions(destinationActionList(this.getHostMACAddress(nextHostIP), ipv4Pkt.getSourceAddress()));
 //				OFInstruction gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
-				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions); //, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchToVIP, 1, applyActions); //, gotoTableInstruction);
 
 				// server to host
 				OFMatch matchFromVIP = new OFMatch();
@@ -286,7 +286,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				applyActions = new OFInstructionApplyActions(sourceActionList(instance.getVirtualMAC(), instance.getVirtualIP()));
 //				gotoTableInstruction = new OFInstructionGotoTable(L3Routing.table);
 
-				installRuleWithIdleTimeout(sw, matchToVIP, -1, applyActions); //, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchToVIP, 1, applyActions); //, gotoTableInstruction);
 
 			} break;
 			default: {
