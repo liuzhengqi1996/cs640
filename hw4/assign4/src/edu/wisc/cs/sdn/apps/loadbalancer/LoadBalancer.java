@@ -297,10 +297,10 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				matchFromVIP.setTransportSource(tcpPkt.getDestinationPort());
 				matchFromVIP.setTransportDestination(tcpPkt.getSourcePort());
 
-				log.info("destination MAC = "+ new MACAddress(instance.getVirtualMAC()) +"; destination IP = "+ IPv4.fromIPv4Address(destinationIP));
+				log.info("source MAC = "+ new MACAddress(instance.getVirtualMAC()) +"; source IP = "+ IPv4.fromIPv4Address(destinationIP));
 
 				ipAction = new OFActionSetField(OFOXMFieldType.IPV4_SRC, destinationIP);
-				ethAction = new OFActionSetField(OFOXMFieldType.ETH_DST, instance.getVirtualMAC());
+				ethAction = new OFActionSetField(OFOXMFieldType.ETH_SRC, instance.getVirtualMAC());
 				applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
