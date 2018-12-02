@@ -284,8 +284,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				OFInstruction applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
 				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
-				log.info("match: " + matchToVIP);
-				log.info("applyActions: " + applyActions);
+//				log.info("match: " + matchToVIP);
+//				log.info("applyActions: " + applyActions);
 
 				// server to host
 				OFMatch matchFromVIP = new OFMatch();
@@ -304,8 +304,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
 				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
-				log.info("match: " + matchFromVIP);
-				log.info("applyActions: " + applyActions);
+//				log.info("match: " + matchFromVIP);
+//				log.info("applyActions: " + applyActions);
 
 			} break;
 			default: {
