@@ -283,7 +283,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				OFAction ethAction = new OFActionSetField(OFOXMFieldType.ETH_DST, this.getHostMACAddress(nextHostIP));
 				OFInstruction applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
-				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions); //, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchToVIP, 2, applyActions, new OFInstructionGotoTable(L3Routing.table)); //, gotoTableInstruction);
 //				log.info("match: " + matchToVIP);
 //				log.info("applyActions: " + applyActions);
 
@@ -303,7 +303,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				ethAction = new OFActionSetField(OFOXMFieldType.ETH_SRC, instance.getVirtualMAC());
 				applyActions = new OFInstructionApplyActions(Arrays.asList(ipAction, ethAction));
 
-				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions); //, gotoTableInstruction);
+				installRuleWithIdleTimeout(sw, matchFromVIP, 2, applyActions, new OFInstructionGotoTable(L3Routing.table)); //, gotoTableInstruction);
 //				log.info("match: " + matchFromVIP);
 //				log.info("applyActions: " + applyActions);
 
